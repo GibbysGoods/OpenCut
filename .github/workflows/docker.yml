@@ -34,4 +34,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/opencut:latest
+          tags: ghcr.io/gibbysgoods/opencut:latest
