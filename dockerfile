@@ -1,4 +1,5 @@
-FROM oven/bun:1
+# ---------- BUILD STAGE ----------
+FROM node:20 AS builder
 
 WORKDIR /app
 
@@ -13,31 +14,35 @@ RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
 ENV PATH="/root/.cargo/bin:${PATH}"
 RUN cargo install wasm-pack
 
+# Install bun (still needed for repo)
+RUN npm install -g bun
+
 # Copy project
 COPY . .
 
-# Install JS deps
+# Install deps
 RUN bun install --frozen-lockfile
 
-# Environment variables required for Next.js build
+# Env for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-
-# Auth (required)
 ENV NEXTAUTH_SECRET=buildsecret
 ENV NEXTAUTH_URL=http://localhost:3000
-
-# Dummy services for build
 ENV DATABASE_URL=postgres://user:pass@localhost:5432/db
 ENV REDIS_URL=redis://localhost:6379
-
-# Public app URL
 ENV NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# 🔍 DEBUG BUILD (this is the important change)
-RUN bunx turbo run build -- --debug
+# ✅ Build using Node (not Bun)
+RUN npx turbo run build
 
-# Move to web app
+# ---------- RUNTIME STAGE ----------
+FROM oven/bun:1
+
+WORKDIR /app
+
+# Copy built app only
+COPY --from=builder /app /app
+
 WORKDIR /app/apps/web
 
 EXPOSE 3000
